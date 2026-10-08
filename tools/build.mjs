@@ -76,14 +76,20 @@ function minifiedScripts() {
   return JSON.parse(r.stdout);
 }
 const mins = minifiedScripts();
+// Some hosts percent-decode widget content, turning a minified `x%10` into a control character.
+// `x % 10` is the same expression, so keep `%` from ever being followed by two hex digits.
+const noPercentEscapes = (code) => code.replace(/%(?=[0-9A-Fa-f]{2})/g, '% ');
 const widgetJs = mins
-  ? `<script>${mins.join('\n').replace(/<\/script/gi, '<\\/script')}</script>`
+  ? `<script>${noPercentEscapes(mins.join('\n')).replace(/<\/script/gi, '<\\/script')}</script>`
   : js;
 const widget = `${fontLinks.filter((l) => l.includes('stylesheet')).join('\n')}
 <style>${minifyCss(css + widgetCss)}</style>
 ${body.replace(/>\s+</g, '><')}
 ${widgetJs}
 `;
+
+const escapes = widget.match(/%[0-9A-Fa-f]{2}/g);
+if (escapes) throw new Error(`dist/widget.html contains percent-escape-like text (${escapes.join(', ')})`);
 
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'isogyre.html'), standalone);
