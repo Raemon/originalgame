@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Isogyre</title>
+<meta name="description" content="A game of interference. You are a wave: throw anchors and the space between you fills with fringes that shatter crystals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <canvas id="hud" role="img" aria-label="The microscope field: your wave, your anchors and the crystals"></canvas>
+
+  <div id="touch" hidden>
+    <div id="stick" aria-hidden="true"><div id="stick-knob"></div></div>
+    <div id="dial" role="slider" aria-label="Stage dial: turn to sweep the fringes"><canvas id="dial-canvas"></canvas></div>
+    <div id="touch-buttons">
+      <button id="btn-focus" class="tbtn" type="button" hidden>Focus</button>
+      <button id="btn-recall" class="tbtn" type="button">Recall</button>
+      <button id="btn-null" class="tbtn" type="button">Null</button>
+    </div>
+    <button id="btn-pause" class="tbtn tbtn-pause" type="button" aria-label="Pause">II</button>
+  </div>
+
+  <section id="screen-title" class="screen screen-title">
+    <div class="title-card">
+      <p class="eyebrow">A game of interference</p>
+      <h1 class="wordmark">Isogyre</h1>
+      <canvas id="ml-strip" width="864" height="64" role="img" aria-label="The Michel-Lévy interference colour chart, first to third order"></canvas>
+      <p class="lede">You cannot shoot. You are a wave. Throw anchors and the space between you fills with interference: <span class="hl-bright">bright fringes</span> shatter crystals, <span class="hl-dark">dark lines</span> are safe.</p>
+      <div class="actions">
+        <button id="btn-start" class="btn btn-primary" type="button">Begin</button>
+      </div>
+      <dl class="keys">
+        <dt>Move</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dd>
+        <dt>Throw anchor</dt><dd><kbd>Click</kbd></dd>
+        <dt>Sweep fringes</dt><dd><kbd>Wheel</kbd> or <kbd>Q</kbd><kbd>E</kbd></dd>
+        <dt>Recall anchors</dt><dd><kbd>Right-click</kbd> or <kbd>R</kbd></dd>
+        <dt>Null</dt><dd><kbd>Space</kbd></dd>
+        <dt>Pause</dt><dd><kbd>Esc</kbd></dd>
+      </dl>
+      <p class="fine">Touch and gamepads work too. Drawn live as a polarising microscope would see it: every colour is computed from the Michel-Lévy interference chart.</p>
+      <p id="best-line" class="best"></p>
+      <div class="settings-slot"></div>
+    </div>
+  </section>
+
+  <section id="screen-upgrade" class="screen screen-upgrade" hidden>
+    <div class="panel panel-wide">
+      <p class="eyebrow">Accessory slot</p>
+      <h2>Insert a plate</h2>
+      <div id="offers" class="offers"></div>
+      <p class="fine">Press 1, 2 or 3.</p>
+    </div>
+  </section>
+
+  <section id="screen-pause" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Stage locked</p>
+      <h2>Paused</h2>
+      <div class="actions">
+        <button id="btn-resume" class="btn btn-primary" type="button">Resume</button>
+        <button id="btn-restart" class="btn" type="button">Restart</button>
+        <button id="btn-quit" class="btn" type="button">Title</button>
+      </div>
+      <div class="settings-slot"></div>
+    </div>
+  </section>
+
+  <section id="screen-over" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Coherence lost</p>
+      <h2>Decoherence</h2>
+      <dl id="over-stats" class="stats"></dl>
+      <div class="actions">
+        <button id="btn-again" class="btn btn-primary" type="button">Try again</button>
+        <button id="btn-over-title" class="btn" type="button">Title</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-victory" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Ten slides</p>
+      <h2>Section complete</h2>
+      <p class="lede">The geode is dust. The stage turns on, into samples nobody has catalogued.</p>
+      <dl id="victory-stats" class="stats"></dl>
+      <div class="actions">
+        <button id="btn-endless" class="btn btn-primary" type="button">Keep going</button>
+        <button id="btn-victory-title" class="btn" type="button">Title</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="nogl" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">No light path</p>
+      <h2>WebGL 2 is unavailable</h2>
+      <p class="lede">Isogyre draws its field on the GPU. Try a current version of Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is switched on.</p>
+    </div>
+  </div>
+
+  <form id="settings" class="settings" onsubmit="return false">
+    <label class="row" for="set-volume"><span>Volume</span><input id="set-volume" type="range" min="0" max="100" step="1" value="70"></label>
+    <label class="row" for="set-quality"><span>Quality</span>
+      <select id="set-quality"><option value="auto">Auto</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+    </label>
+    <label class="row check" for="set-motion"><input id="set-motion" type="checkbox"><span>Reduce motion and screen shake</span></label>
+    <label class="row check" for="set-hints"><input id="set-hints" type="checkbox" checked><span>Show tutorial hints</span></label>
+  </form>
+</div>
+
+<script src="src/util.js"></script>
+<script src="src/optics.js"></script>
+<script src="src/glkit.js"></script>
+<script src="src/shaders.js"></script>
+<script src="src/render.js"></script>
+<script src="src/batches.js"></script>
+<script src="src/field.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/bestiary.js"></script>
+<script src="src/upgrades.js"></script>
+<script src="src/waves.js"></script>
+<script src="src/game.js"></script>
+<script src="src/entities.js"></script>
+<script src="src/boss.js"></script>
+<script src="src/scene.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/input.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
