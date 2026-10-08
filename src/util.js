@@ -13,7 +13,6 @@ const smoothstep = (a, b, x) => {
 /** Frame-rate independent exponential approach. */
 const approach = (a, b, rate, dt) => a + (b - a) * (1 - Math.exp(-rate * dt));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-const easeInOutSine = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
 
 function wrapAngle(a) {
   a = (a + Math.PI) % TAU;
@@ -43,7 +42,6 @@ const Rng = {
   chance(p) { return this.f() < p; },
 };
 
-const vrand = (a, b) => a + (b - a) * Math.random();
 
 /* ---------- Polygons (convex, CCW or CW — we only need consistent winding) ---------- */
 

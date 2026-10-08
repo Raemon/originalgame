@@ -105,6 +105,8 @@ class Game {
     this.tipsDone = new Set();
     this.aim = { x: 120, y: -40 };
     this.fieldHeat = 0;
+    this.slideSwap = null;
+    this.fade = 1;
     this.grain = { seed: 11, cell: 70, ret: [90, 950], twin: 0.3 };
     this.recomputeStats();
     if (attract) this.setupAttract();
@@ -150,12 +152,15 @@ class Game {
     const def = waveDef(index);
     this.dir = { def, gi: 0, wait: def.groups.length ? def.groups[0].delay : 0, t: 0 };
     this.recomputeStats();
-    this.grain = {
+    const grain = {
       seed: 11 + index * 17.3,
       cell: def.grain.cell,
       ret: def.grain.ret,
       twin: def.grain.twin,
     };
+    // swap the thin section while the view dips, like changing slides on the stage
+    if (index > 0) this.slideSwap = { t: 0, dur: 0.9, grain };
+    else this.grain = grain;
     const name = def.rock.toUpperCase();
     this.banner = { title: `SLIDE ${String(index + 1).padStart(2, '0')}`, sub: name, t: 0, dur: 3.2 };
     if (!this.attract) {
@@ -397,6 +402,13 @@ class Game {
         break;
     }
     if (this.banner) { this.banner.t += dt; if (this.banner.t > this.banner.dur) this.banner = null; }
+    if (this.slideSwap) {
+      const sw = this.slideSwap;
+      sw.t += dt;
+      if (sw.t >= sw.dur * 0.5 && sw.grain) { this.grain = sw.grain; sw.grain = null; }
+      this.fade = 1 - 0.82 * Math.sin(Math.PI * clamp(sw.t / sw.dur, 0, 1));
+      if (sw.t >= sw.dur) { this.slideSwap = null; this.fade = 1; }
+    }
     this.shake = Math.max(0, this.shake - dt * 2.2);
   }
 
@@ -584,9 +596,9 @@ class Game {
       const f = clamp(e.life / 0.6, 0, 1) * clamp((e.max - e.life) / 0.15, 0, 1);
       o.x = e.x; o.y = e.y; o.a = st.amp * 0.85 * f; o.p = e.p + s * 0.5;
     }
-    // Bertrand lens: phase every source onto the aim point
+    // Bertrand lens: phase every source onto the aim point, and concentrate the lamp into it
     if (p.focusOn) {
-      for (const o of src) o.p = Field.focusPhase(o.x, o.y, this.aim.x, this.aim.y, Field.k);
+      for (const o of src) { o.p = Field.focusPhase(o.x, o.y, this.aim.x, this.aim.y, Field.k); o.a *= 1.35; }
     }
 
     // hazard channel

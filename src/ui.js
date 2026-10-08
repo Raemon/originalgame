@@ -206,6 +206,7 @@ const UI = {
   /* ---------------- touch controls ---------------- */
   refreshTouch() {
     const g = this.game;
+    document.body.classList.toggle('touch-mode', g.inputMode === 'touch');
     const el = this.$('touch');
     const playing = g.state === 'playing' || g.state === 'cleared';
     el.hidden = !(g.inputMode === 'touch' && playing);

@@ -58,8 +58,6 @@ const Upgrades = [
   },
 ];
 
-const UpgradeById = Object.fromEntries(Upgrades.map((u) => [u.id, u]));
-
 /** Pick `n` distinct offers, weighted, respecting caps. */
 function rollUpgrades(levels, waveIndex, n = 3, forceFirst = null) {
   const pool = Upgrades.filter((u) => (levels[u.id] || 0) < u.max && (u.minWave || 0) <= waveIndex);

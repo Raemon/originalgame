@@ -494,9 +494,23 @@ class HUD {
   }
 
   drawReticle(g) {
-    if (g.inputMode === 'touch') return;
     const ctx = this.ctx;
     const [x, y] = this.w2s(g, g.aim.x, g.aim.y);
+    if (g.player.focusOn) {
+      // converging rings: the focal point of the Bertrand lens
+      ctx.save();
+      ctx.strokeStyle = this.colors.tint;
+      for (let i = 0; i < 3; i++) {
+        const u = (g.realTime * 1.6 + i / 3) % 1;
+        ctx.globalAlpha = u * 0.8;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x, y, 8 + (1 - u) * 34, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (g.inputMode === 'touch') return;
     const L = g.layout;
     if (Math.hypot(x - L.cx, y - L.cy) > L.R + 30) return;
     ctx.save();

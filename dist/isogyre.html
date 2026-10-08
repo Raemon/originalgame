@@ -347,6 +347,8 @@ kbd {
   letter-spacing: 0;
 }
 
+body.touch-mode .kb-only { display: none; }
+
 @media (max-width: 760px), (max-aspect-ratio: 1/1) {
   .screen-title {
     align-items: flex-end;
@@ -401,7 +403,7 @@ kbd {
         <dt>Null</dt><dd><kbd>Space</kbd></dd>
         <dt>Pause</dt><dd><kbd>Esc</kbd></dd>
       </dl>
-      <p class="fine">Touch and gamepads work too. Drawn live as a polarising microscope would see it: every colour is computed from the Michel-Lévy interference chart.</p>
+      <p class="fine">Touch and gamepads work too. Drawn live, the way a polarising microscope sees crystals; every colour comes from the Michel-Lévy interference chart.</p>
       <p id="best-line" class="best"></p>
       <div class="settings-slot"></div>
     </div>
@@ -412,7 +414,7 @@ kbd {
       <p class="eyebrow">Accessory slot</p>
       <h2>Insert a plate</h2>
       <div id="offers" class="offers"></div>
-      <p class="fine">Press 1, 2 or 3.</p>
+      <p class="fine kb-only">Press 1, 2 or 3.</p>
     </div>
   </section>
 
@@ -488,7 +490,6 @@ const smoothstep = (a, b, x) => {
 /** Frame-rate independent exponential approach. */
 const approach = (a, b, rate, dt) => a + (b - a) * (1 - Math.exp(-rate * dt));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-const easeInOutSine = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
 
 function wrapAngle(a) {
   a = (a + Math.PI) % TAU;
@@ -518,7 +519,6 @@ const Rng = {
   chance(p) { return this.f() < p; },
 };
 
-const vrand = (a, b) => a + (b - a) * Math.random();
 
 /* ---------- Polygons (convex, CCW or CW — we only need consistent winding) ---------- */
 
@@ -2587,8 +2587,6 @@ const Upgrades = [
   },
 ];
 
-const UpgradeById = Object.fromEntries(Upgrades.map((u) => [u.id, u]));
-
 /** Pick `n` distinct offers, weighted, respecting caps. */
 function rollUpgrades(levels, waveIndex, n = 3, forceFirst = null) {
   const pool = Upgrades.filter((u) => (levels[u.id] || 0) < u.max && (u.minWave || 0) <= waveIndex);
@@ -2941,6 +2939,8 @@ class Game {
     this.tipsDone = new Set();
     this.aim = { x: 120, y: -40 };
     this.fieldHeat = 0;
+    this.slideSwap = null;
+    this.fade = 1;
     this.grain = { seed: 11, cell: 70, ret: [90, 950], twin: 0.3 };
     this.recomputeStats();
     if (attract) this.setupAttract();
@@ -2986,12 +2986,15 @@ class Game {
     const def = waveDef(index);
     this.dir = { def, gi: 0, wait: def.groups.length ? def.groups[0].delay : 0, t: 0 };
     this.recomputeStats();
-    this.grain = {
+    const grain = {
       seed: 11 + index * 17.3,
       cell: def.grain.cell,
       ret: def.grain.ret,
       twin: def.grain.twin,
     };
+    // swap the thin section while the view dips, like changing slides on the stage
+    if (index > 0) this.slideSwap = { t: 0, dur: 0.9, grain };
+    else this.grain = grain;
     const name = def.rock.toUpperCase();
     this.banner = { title: `SLIDE ${String(index + 1).padStart(2, '0')}`, sub: name, t: 0, dur: 3.2 };
     if (!this.attract) {
@@ -3233,6 +3236,13 @@ class Game {
         break;
     }
     if (this.banner) { this.banner.t += dt; if (this.banner.t > this.banner.dur) this.banner = null; }
+    if (this.slideSwap) {
+      const sw = this.slideSwap;
+      sw.t += dt;
+      if (sw.t >= sw.dur * 0.5 && sw.grain) { this.grain = sw.grain; sw.grain = null; }
+      this.fade = 1 - 0.82 * Math.sin(Math.PI * clamp(sw.t / sw.dur, 0, 1));
+      if (sw.t >= sw.dur) { this.slideSwap = null; this.fade = 1; }
+    }
     this.shake = Math.max(0, this.shake - dt * 2.2);
   }
 
@@ -3420,9 +3430,9 @@ class Game {
       const f = clamp(e.life / 0.6, 0, 1) * clamp((e.max - e.life) / 0.15, 0, 1);
       o.x = e.x; o.y = e.y; o.a = st.amp * 0.85 * f; o.p = e.p + s * 0.5;
     }
-    // Bertrand lens: phase every source onto the aim point
+    // Bertrand lens: phase every source onto the aim point, and concentrate the lamp into it
     if (p.focusOn) {
-      for (const o of src) o.p = Field.focusPhase(o.x, o.y, this.aim.x, this.aim.y, Field.k);
+      for (const o of src) { o.p = Field.focusPhase(o.x, o.y, this.aim.x, this.aim.y, Field.k); o.a *= 1.35; }
     }
 
     // hazard channel
@@ -4823,9 +4833,23 @@ class HUD {
   }
 
   drawReticle(g) {
-    if (g.inputMode === 'touch') return;
     const ctx = this.ctx;
     const [x, y] = this.w2s(g, g.aim.x, g.aim.y);
+    if (g.player.focusOn) {
+      // converging rings: the focal point of the Bertrand lens
+      ctx.save();
+      ctx.strokeStyle = this.colors.tint;
+      for (let i = 0; i < 3; i++) {
+        const u = (g.realTime * 1.6 + i / 3) % 1;
+        ctx.globalAlpha = u * 0.8;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x, y, 8 + (1 - u) * 34, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (g.inputMode === 'touch') return;
     const L = g.layout;
     if (Math.hypot(x - L.cx, y - L.cy) > L.R + 30) return;
     ctx.save();
@@ -5378,6 +5402,7 @@ const UI = {
   /* ---------------- touch controls ---------------- */
   refreshTouch() {
     const g = this.game;
+    document.body.classList.toggle('touch-mode', g.inputMode === 'touch');
     const el = this.$('touch');
     const playing = g.state === 'playing' || g.state === 'cleared';
     el.hidden = !(g.inputMode === 'touch' && playing);

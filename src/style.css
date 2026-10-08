@@ -336,6 +336,8 @@ kbd {
   letter-spacing: 0;
 }
 
+body.touch-mode .kb-only { display: none; }
+
 @media (max-width: 760px), (max-aspect-ratio: 1/1) {
   .screen-title {
     align-items: flex-end;
