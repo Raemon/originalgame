@@ -29,8 +29,20 @@ function boot(hotData) {
   const audio = new AudioEngine();
   const game = new Game(renderer, audio);
   const hud = new HUD(hudCanvas);
+  const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
+  if (mq('(pointer: coarse)') && !mq('(pointer: fine)')) game.inputMode = 'touch';
   UI.init(game, audio);
   Input.init(app, game);
+
+  // Embedded in a page (e.g. a post widget), stop simulating and drawing while scrolled out of view.
+  let visible = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      const e = entries[entries.length - 1];
+      visible = e.isIntersecting;
+      if (!visible && (game.state === 'playing' || game.state === 'cleared')) game.pause();
+    }, { threshold: 0.02 }).observe(app);
+  }
 
   const QUALITY = {
     high: { scale: 1.0, dust: 256, dustPoint: 1.6 },
@@ -56,7 +68,8 @@ function boot(hotData) {
     const touch = game.inputMode === 'touch' || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     let cx = W / 2, cy = H / 2, R;
     if (W >= H * 1.05) {
-      R = Math.min(H * 0.425, W * 0.5 - 72);
+      // leave room above the eyepiece for the phase readout and stage numbers
+      R = Math.min(H * 0.5 - 64, W * 0.5 - 72);
       if (touch) R = Math.min(R, W * 0.5 - 150);
       cy = H / 2 + 6;
     } else {
@@ -67,8 +80,8 @@ function boot(hotData) {
     }
     R = Math.max(R, 80);
     const tall = !(W >= H * 1.05);
-    // on the title screen of a wide display, slide the eyepiece right of the title card
-    if (game.state === 'title' && W > 900 && W >= H * 1.15) {
+    // on a landscape title screen, slide the eyepiece right of the title card
+    if (game.state === 'title' && W >= 560 && W >= H * 1.15) {
       R = Math.min(R, H * 0.41, W * 0.27);
       cx = W - R - Math.max(70, W * 0.07);
     }
@@ -112,6 +125,7 @@ function boot(hotData) {
   function frame(now) {
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
     last = now;
+    if (!visible) { requestAnimationFrame(frame); return; }
     if (Input.consumePause()) {
       if (game.state === 'playing' || game.state === 'cleared') game.pause();
       else if (game.state === 'paused') game.resume();

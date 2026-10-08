@@ -168,9 +168,11 @@ class HUD {
       ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
       ctx.stroke();
     }
-    const la = top + (side < 0 ? 0.06 : -0.06);
+    // short layouts: the corner info blocks crowd the top ends, so label the bottom ends
+    const below = g.layout.H < 700;
+    const la = below ? bottom + (side < 0 ? -0.06 : 0.06) : top + (side < 0 ? 0.06 : -0.06);
     const lx = cx + Math.cos(la) * (rg + 2), ly = cy + Math.sin(la) * (rg + 2);
-    this.label(lx, ly, label, value, side < 0 ? 'right' : 'left');
+    this.label(lx, ly, label, value, side < 0 ? 'right' : 'left', below);
     ctx.restore();
   }
 
@@ -192,10 +194,10 @@ class HUD {
     ctx.restore();
   }
 
-  label(x, y, label, value, align) {
+  label(x, y, label, value, align, below = false) {
     const ctx = this.ctx;
     ctx.textAlign = align;
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = below ? 'top' : 'bottom';
     ctx.fillStyle = INK(0.55);
     ctx.font = `600 10px ${FONTS.ui}`;
     ctx.letterSpacing = '0.14em';
@@ -203,7 +205,7 @@ class HUD {
     ctx.fillStyle = INK(0.85);
     ctx.font = `500 11px ${FONTS.mono}`;
     ctx.letterSpacing = '0px';
-    ctx.fillText(value, x, y - 13);
+    ctx.fillText(value, x, below ? y + 13 : y - 13);
   }
 
   /** Small anchor glyphs: filled = out on the field, ring = in hand. */

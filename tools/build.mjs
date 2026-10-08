@@ -4,9 +4,13 @@
  *   dist/isogyre.html   a complete standalone page (open it straight from disk)
  *   dist/fragment.html  the same page without <html>/<head>/<body>, for hosts that supply
  *                       their own document skeleton
+ *   dist/widget.html    a minified fragment for embedding in an auto-height iframe (e.g. a
+ *                       blog-post widget): its height is derived from its width
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -53,9 +57,39 @@ ${body}
 ${js}
 `;
 
+// ---- widget: the host iframe takes its height from <body>, so size the body from the width
+const widgetCss = `
+html, body { height: auto; }
+body { height: clamp(380px, 80vw, 620px); }
+@media (max-width: 559px) { body { height: min(175vw, 720px); } }
+`;
+const minifyCss = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').trim();
+function minifiedScripts() {
+  const bun = process.env.BUN || [path.join(os.homedir(), '.bun', 'bin', 'bun'), 'bun'].find((b) => {
+    try { return spawnSync(b, ['--version']).status === 0; } catch { return false; }
+  });
+  if (!bun) return null;
+  const r = spawnSync(bun, [path.join(root, 'tools', 'minify.ts'), ...scripts.map((s) => path.join(root, s))], {
+    encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+  });
+  if (r.status !== 0) { console.warn('minify failed, using unminified scripts:\n' + r.stderr); return null; }
+  return JSON.parse(r.stdout);
+}
+const mins = minifiedScripts();
+const widgetJs = mins
+  ? `<script>${mins.join('\n').replace(/<\/script/gi, '<\\/script')}</script>`
+  : js;
+const widget = `${fontLinks.filter((l) => l.includes('stylesheet')).join('\n')}
+<style>${minifyCss(css + widgetCss)}</style>
+${body.replace(/>\s+</g, '><')}
+${widgetJs}
+`;
+
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'isogyre.html'), standalone);
 fs.writeFileSync(path.join(root, 'dist', 'fragment.html'), fragment);
+fs.writeFileSync(path.join(root, 'dist', 'widget.html'), widget);
 const kb = (s) => (Buffer.byteLength(s) / 1024).toFixed(1) + ' KB';
 console.log(`dist/isogyre.html  ${kb(standalone)}  (${scripts.length} scripts inlined)`);
 console.log(`dist/fragment.html ${kb(fragment)}`);
+console.log(`dist/widget.html   ${kb(widget)}${mins ? ' (minified)' : ' (unminified: Bun not found)'}`);

@@ -46,7 +46,8 @@ const UI = {
     quality.addEventListener('change', () => { game.settings.quality = quality.value; persist(); game.emit('quality'); });
 
     const fs = $('set-fullscreen');
-    const canFs = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    const canFs = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)
+      && document.fullscreenEnabled !== false;
     fs.hidden = !canFs;
     fs.addEventListener('click', () => {
       const d = document;
@@ -233,17 +234,32 @@ const UI = {
   layoutTouch(L) {
     const dial = this.$('dial');
     const btns = this.$('touch-buttons');
-    const portrait = L.H > L.W * 1.05;
-    const dr = portrait ? Math.min(64, (L.H - (L.cy + L.R + 60)) * 0.45) : Math.min(62, (L.W / 2 - L.R - 40) * 0.6);
-    const size = Math.max(84, dr * 2);
-    let dx, dy;
-    if (portrait) { dx = L.W - size / 2 - 22; dy = L.H - size / 2 - 26; }
-    else { dx = L.W - size / 2 - 18; dy = L.H - size / 2 - 22; }
+    let size, left, top;
+    btns.style.flexDirection = 'column';
+    if (L.tall) {
+      // below the eyepiece and its gauges
+      const area = L.cy + L.R + 64;
+      const avail = L.H - area - 14;
+      size = clamp(avail, 84, 128);
+      left = L.W - size - 16;
+      top = L.H - size - 14;
+      btns.style.right = `${size + 28}px`;
+      if (avail >= 102) {
+        btns.style.bottom = `${14 + Math.max(0, (size - 102) / 2)}px`;
+      } else {
+        btns.style.flexDirection = 'row';
+        btns.style.bottom = `${14 + Math.max(0, (size - 46) / 2)}px`;
+      }
+    } else {
+      size = clamp((L.W / 2 - L.R - 40) * 1.2, 84, 124);
+      left = L.W - size - 18;
+      top = L.H - size - 18;
+      btns.style.right = '18px';
+      btns.style.bottom = `${size + 30}px`;
+    }
     dial.style.width = dial.style.height = `${size}px`;
-    dial.style.left = `${dx - size / 2}px`;
-    dial.style.top = `${dy - size / 2}px`;
-    btns.style.right = portrait ? `${size + 36}px` : '18px';
-    btns.style.bottom = portrait ? '28px' : `${size + 34}px`;
+    dial.style.left = `${left}px`;
+    dial.style.top = `${top}px`;
     this.drawDial(size);
   },
 

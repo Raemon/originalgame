@@ -37,6 +37,11 @@ const Input = {
     });
 
     root.addEventListener('contextmenu', (e) => e.preventDefault());
+    // whatever pressed "Begin" decides the first set of hints and controls
+    window.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') this.setMode('touch');
+      else if (e.pointerType === 'mouse' && this.game.inputMode === 'touch') this.setMode('kb');
+    }, true);
     root.addEventListener('wheel', (e) => {
       if (this.game.state !== 'playing' && this.game.state !== 'cleared') return;
       e.preventDefault();
@@ -200,7 +205,14 @@ const Input = {
   },
 
   pollPad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pads = [];
+    try {
+      // a sandboxed or cross-origin frame may forbid the Gamepad API outright
+      pads = (navigator.getGamepads && navigator.getGamepads()) || [];
+    } catch (e) {
+      this.noPads = true;
+    }
+    if (this.noPads) return null;
     let pad = null;
     for (const p of pads) if (p && p.connected) { pad = p; break; }
     if (!pad) return null;
