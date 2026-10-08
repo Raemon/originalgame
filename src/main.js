@@ -16,6 +16,15 @@ function boot(hotData) {
     return;
   }
 
+  let lost = false;
+  glCanvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    lost = true;
+    if (game.state === 'playing' || game.state === 'cleared') game.pause();
+    document.getElementById('glost').hidden = false;
+  });
+  document.getElementById('btn-reload').addEventListener('click', () => window.location.reload());
+
   if (QueryFlags.seed) Rng.seed(Number(QueryFlags.seed));
   const audio = new AudioEngine();
   const game = new Game(renderer, audio);
@@ -126,7 +135,7 @@ function boot(hotData) {
       LC.R = approach(LC.R, LT.R, r, dt);
     }
     audio.update(game, dt);
-    renderer.frame(game.buildScene(renderer, dt));
+    if (!lost) renderer.frame(game.buildScene(renderer, dt));
     hud.draw(game, dt);
     frames++;
     window.__frames = frames;

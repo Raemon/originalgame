@@ -45,6 +45,22 @@ const UI = {
     hints.addEventListener('change', () => { game.settings.hints = hints.checked; persist(); });
     quality.addEventListener('change', () => { game.settings.quality = quality.value; persist(); game.emit('quality'); });
 
+    const fs = $('set-fullscreen');
+    const canFs = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    fs.hidden = !canFs;
+    fs.addEventListener('click', () => {
+      const d = document;
+      const el = d.documentElement;
+      const on = d.fullscreenElement || d.webkitFullscreenElement;
+      try {
+        const r = on ? (d.exitFullscreen || d.webkitExitFullscreen).call(d) : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if (r && r.catch) r.catch(() => {});
+      } catch (err) { /* refused by the host frame */ }
+    });
+    const syncFs = () => { fs.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Leave full screen' : 'Full screen'; };
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
+
     window.addEventListener('keydown', (e) => {
       if (game.state === 'upgrade' && ['1', '2', '3'].includes(e.key)) {
         const o = game.offers[Number(e.key) - 1];

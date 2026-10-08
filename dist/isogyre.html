@@ -174,6 +174,7 @@ h2 {
 }
 .btn:hover { border-color: var(--ink-dim); }
 .btn-primary { background: var(--ink); color: #08080a; border-color: var(--ink); }
+.btn-small { padding: 0.6em 1.1em; font-size: 0.72rem; justify-self: start; }
 .btn-primary:hover { background: #fff; }
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--straw);
@@ -456,6 +457,15 @@ body.touch-mode .kb-only { display: none; }
     </div>
   </section>
 
+  <div id="glost" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Light path interrupted</p>
+      <h2>The graphics device reset</h2>
+      <p class="lede">The browser dropped the WebGL context, usually after a driver hiccup or a long sleep.</p>
+      <div class="actions"><button id="btn-reload" class="btn btn-primary" type="button">Reload</button></div>
+    </div>
+  </div>
+
   <div id="nogl" class="screen" hidden>
     <div class="panel">
       <p class="eyebrow">No light path</p>
@@ -471,6 +481,7 @@ body.touch-mode .kb-only { display: none; }
     </label>
     <label class="row check" for="set-motion"><input id="set-motion" type="checkbox"><span>Reduce motion and screen shake</span></label>
     <label class="row check" for="set-hints"><input id="set-hints" type="checkbox" checked><span>Show tutorial hints</span></label>
+    <button id="set-fullscreen" class="btn btn-small" type="button">Full screen</button>
   </form>
 </div>
 <script>
@@ -5241,6 +5252,22 @@ const UI = {
     hints.addEventListener('change', () => { game.settings.hints = hints.checked; persist(); });
     quality.addEventListener('change', () => { game.settings.quality = quality.value; persist(); game.emit('quality'); });
 
+    const fs = $('set-fullscreen');
+    const canFs = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    fs.hidden = !canFs;
+    fs.addEventListener('click', () => {
+      const d = document;
+      const el = d.documentElement;
+      const on = d.fullscreenElement || d.webkitFullscreenElement;
+      try {
+        const r = on ? (d.exitFullscreen || d.webkitExitFullscreen).call(d) : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if (r && r.catch) r.catch(() => {});
+      } catch (err) { /* refused by the host frame */ }
+    });
+    const syncFs = () => { fs.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Leave full screen' : 'Full screen'; };
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
+
     window.addEventListener('keydown', (e) => {
       if (game.state === 'upgrade' && ['1', '2', '3'].includes(e.key)) {
         const o = game.offers[Number(e.key) - 1];
@@ -5481,6 +5508,15 @@ function boot(hotData) {
     return;
   }
 
+  let lost = false;
+  glCanvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    lost = true;
+    if (game.state === 'playing' || game.state === 'cleared') game.pause();
+    document.getElementById('glost').hidden = false;
+  });
+  document.getElementById('btn-reload').addEventListener('click', () => window.location.reload());
+
   if (QueryFlags.seed) Rng.seed(Number(QueryFlags.seed));
   const audio = new AudioEngine();
   const game = new Game(renderer, audio);
@@ -5591,7 +5627,7 @@ function boot(hotData) {
       LC.R = approach(LC.R, LT.R, r, dt);
     }
     audio.update(game, dt);
-    renderer.frame(game.buildScene(renderer, dt));
+    if (!lost) renderer.frame(game.buildScene(renderer, dt));
     hud.draw(game, dt);
     frames++;
     window.__frames = frames;

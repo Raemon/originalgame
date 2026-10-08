@@ -163,6 +163,7 @@ h2 {
 }
 .btn:hover { border-color: var(--ink-dim); }
 .btn-primary { background: var(--ink); color: #08080a; border-color: var(--ink); }
+.btn-small { padding: 0.6em 1.1em; font-size: 0.72rem; justify-self: start; }
 .btn-primary:hover { background: #fff; }
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--straw);

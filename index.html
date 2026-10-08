@@ -96,6 +96,15 @@
     </div>
   </section>
 
+  <div id="glost" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Light path interrupted</p>
+      <h2>The graphics device reset</h2>
+      <p class="lede">The browser dropped the WebGL context, usually after a driver hiccup or a long sleep.</p>
+      <div class="actions"><button id="btn-reload" class="btn btn-primary" type="button">Reload</button></div>
+    </div>
+  </div>
+
   <div id="nogl" class="screen" hidden>
     <div class="panel">
       <p class="eyebrow">No light path</p>
@@ -111,6 +120,7 @@
     </label>
     <label class="row check" for="set-motion"><input id="set-motion" type="checkbox"><span>Reduce motion and screen shake</span></label>
     <label class="row check" for="set-hints"><input id="set-hints" type="checkbox" checked><span>Show tutorial hints</span></label>
+    <button id="set-fullscreen" class="btn btn-small" type="button">Full screen</button>
   </form>
 </div>
 
