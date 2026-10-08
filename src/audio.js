@@ -256,14 +256,14 @@ class AudioEngine {
         break;
       }
       case 'crackle': {
-        this.crackleBudget += data * 30;
-        let n = 0;
-        while (this.crackleBudget > 1 && n < 2) {
+        // resonance ticks, at most ~24 per second however much is cracking
+        this.crackleBudget = Math.min(this.crackleBudget + data * 14, 3);
+        const now = this.ctx.currentTime;
+        if (this.crackleBudget > 1 && now - (this.lastCrackle || 0) > 0.04) {
           this.crackleBudget -= 1;
-          n++;
-          this.noise(t + Math.random() * 0.02, 0.025, 0.02 + Math.random() * 0.02, 'bandpass', 2500 + Math.random() * 5000, { q: 4 });
+          this.lastCrackle = now;
+          this.noise(t + Math.random() * 0.015, 0.025, 0.02 + Math.random() * 0.02, 'bandpass', 2500 + Math.random() * 5000, { q: 4 });
         }
-        this.crackleBudget = Math.min(this.crackleBudget, 4);
         break;
       }
       case 'hurt':

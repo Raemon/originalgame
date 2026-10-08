@@ -1,7 +1,7 @@
 'use strict';
 /* ISOGYRE — boot, layout, adaptive quality and the frame loop. */
 
-(function boot() {
+function boot(hotData) {
   const app = document.getElementById('app');
   const glCanvas = document.getElementById('gl');
   const hudCanvas = document.getElementById('hud');
@@ -154,4 +154,15 @@
 
   // Test and tooling hooks
   window.ISOGYRE = { game, renderer, hud, audio, Field, CFG, Input, layout };
+
+  // When the hosting viewer hot-reloads the page, carry the run across
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ checkpoint: game.checkpoint() }));
+  if (hotData && hotData.checkpoint) game.resumeCheckpoint(hotData.checkpoint);
+}
+
+(function start() {
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.ready === 'function') hot.ready(boot);
+  else boot((hot && hot.data) || {});
 })();

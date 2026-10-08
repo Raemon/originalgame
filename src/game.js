@@ -249,6 +249,32 @@ class Game {
     this.emit('state', this.state);
   }
 
+  /** A compact save of the current run, used when the page is hot-reloaded. */
+  checkpoint() {
+    if (this.attract || !['playing', 'cleared', 'paused', 'upgrade'].includes(this.state)) return null;
+    return {
+      wave: this.waveIndex, score: this.score, up: { ...this.up }, hp: this.player.hp,
+      endless: !!this.endless, tips: [...this.tipsDone], stats: { ...this.stats },
+    };
+  }
+
+  /** Resume a checkpoint at the start of its slide, paused so the player can get ready. */
+  resumeCheckpoint(cp) {
+    if (!cp || typeof cp.wave !== 'number') return;
+    this.newRun(false);
+    this.up = { ...(cp.up || {}) };
+    this.score = cp.score || 0;
+    this.endless = !!cp.endless;
+    for (const t of cp.tips || []) this.tipsDone.add(t);
+    Object.assign(this.stats, cp.stats || {});
+    this.state = 'playing';
+    this.beginWave(cp.wave);
+    this.player.hp = clamp(cp.hp || CFG.HP, 1, CFG.HP);
+    this.prevState = 'playing';
+    this.state = 'paused';
+    this.emit('state', this.state);
+  }
+
   saveBest() {
     if (this.attract) return;
     const b = this.best;

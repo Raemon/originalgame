@@ -2190,14 +2190,14 @@ class AudioEngine {
         break;
       }
       case 'crackle': {
-        this.crackleBudget += data * 30;
-        let n = 0;
-        while (this.crackleBudget > 1 && n < 2) {
+        // resonance ticks, at most ~24 per second however much is cracking
+        this.crackleBudget = Math.min(this.crackleBudget + data * 14, 3);
+        const now = this.ctx.currentTime;
+        if (this.crackleBudget > 1 && now - (this.lastCrackle || 0) > 0.04) {
           this.crackleBudget -= 1;
-          n++;
-          this.noise(t + Math.random() * 0.02, 0.025, 0.02 + Math.random() * 0.02, 'bandpass', 2500 + Math.random() * 5000, { q: 4 });
+          this.lastCrackle = now;
+          this.noise(t + Math.random() * 0.015, 0.025, 0.02 + Math.random() * 0.02, 'bandpass', 2500 + Math.random() * 5000, { q: 4 });
         }
-        this.crackleBudget = Math.min(this.crackleBudget, 4);
         break;
       }
       case 'hurt':
@@ -3082,6 +3082,32 @@ class Game {
     this.shake = 1;
     this.sfx('death');
     this.saveBest();
+    this.emit('state', this.state);
+  }
+
+  /** A compact save of the current run, used when the page is hot-reloaded. */
+  checkpoint() {
+    if (this.attract || !['playing', 'cleared', 'paused', 'upgrade'].includes(this.state)) return null;
+    return {
+      wave: this.waveIndex, score: this.score, up: { ...this.up }, hp: this.player.hp,
+      endless: !!this.endless, tips: [...this.tipsDone], stats: { ...this.stats },
+    };
+  }
+
+  /** Resume a checkpoint at the start of its slide, paused so the player can get ready. */
+  resumeCheckpoint(cp) {
+    if (!cp || typeof cp.wave !== 'number') return;
+    this.newRun(false);
+    this.up = { ...(cp.up || {}) };
+    this.score = cp.score || 0;
+    this.endless = !!cp.endless;
+    for (const t of cp.tips || []) this.tipsDone.add(t);
+    Object.assign(this.stats, cp.stats || {});
+    this.state = 'playing';
+    this.beginWave(cp.wave);
+    this.player.hp = clamp(cp.hp || CFG.HP, 1, CFG.HP);
+    this.prevState = 'playing';
+    this.state = 'paused';
     this.emit('state', this.state);
   }
 
@@ -5415,7 +5441,7 @@ const UI = {
 'use strict';
 /* ISOGYRE — boot, layout, adaptive quality and the frame loop. */
 
-(function boot() {
+function boot(hotData) {
   const app = document.getElementById('app');
   const glCanvas = document.getElementById('gl');
   const hudCanvas = document.getElementById('hud');
@@ -5568,6 +5594,17 @@ const UI = {
 
   // Test and tooling hooks
   window.ISOGYRE = { game, renderer, hud, audio, Field, CFG, Input, layout };
+
+  // When the hosting viewer hot-reloads the page, carry the run across
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ checkpoint: game.checkpoint() }));
+  if (hotData && hotData.checkpoint) game.resumeCheckpoint(hotData.checkpoint);
+}
+
+(function start() {
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.ready === 'function') hot.ready(boot);
+  else boot((hot && hot.data) || {});
 })();
 
 </script>
