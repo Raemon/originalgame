@@ -6,7 +6,7 @@ You cannot shoot. You are a wave source. Throw **anchors**, other sources tuned 
 
 The whole game is drawn as a **live cross‑polarised light micrograph**, the view a geologist gets through a polarising microscope. Every colour on screen is computed from the physics of birefringence. There are no sprites, textures or audio samples.
 
-Play: open `index.html`, or `dist/isogyre.html`, a single self-contained file. You need a browser with WebGL 2.
+**Play it at https://raemon.github.io/originalgame/**. You can also open `index.html` locally, or `dist/isogyre.html`, a single self-contained file. You need a browser with WebGL 2.
 
 ---
 
@@ -76,10 +76,13 @@ src/bot.js          autopilot used by the tools below
 ```
 
 ```sh
-node tools/build.mjs          # -> dist/isogyre.html (single file) and dist/fragment.html
+node tools/build.mjs          # -> dist/isogyre.html (single file), dist/fragment.html, dist/widget.html
+node tools/deploy-pages.mjs   # build, then publish index.html + widget.html to the gh-pages branch
 node tools/sim.mjs 6 1 12     # headless balance run: 6 runs, bot skill 1.0, 12 slides
 python3 -m http.server 8777 & node tools/smoke.mjs   # Playwright smoke test + screenshots
 ```
+
+GitHub Pages serves the `gh-pages` branch: the game at `/`, and at `/widget.html` a build that sizes itself from its width, for embedding in an auto-height iframe such as a blog-post widget.
 
 The simulator runs the real game code in a Node VM with the autopilot. It reports per-slide duration, damage taken, and how far from the player crystals shatter, which is how the difficulty curve was tuned. The smoke test plays the game in headless Chromium, captures screenshots of every screen on desktop and phone, and fails on any console error.
 
